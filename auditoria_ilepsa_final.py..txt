@@ -1,0 +1,89 @@
+# Bloque 2: Motor de Auditoría Industrial con Estabilización y Telemetría
+import time
+import pandas as pd 
+
+# --- AJUSTE DE RUTAS ---
+ruta_v7 = '/content/drive/MyDrive/Proyecto_ILEPSA/modelo_botellas_v7.pt'
+# Asegúrate de que esta ruta sea la correcta en tu Drive
+ruta_video = '/content/drive/MyDrive/Proyecto_ILEPSA/videos/WhatsApp Video 2026-03-31 at 08.49.13.mp4'
+
+modelo = YOLO(ruta_v7)
+cap = cv2.VideoCapture(ruta_video)
+
+# --- CONFIGURACIÓN DE ROBUSTEZ ---
+umbral_transparencia = 145 
+confianza_minima = 0.65
+datos_auditoria = [] 
+fps_historico = []
+
+# Contadores
+total_ok, total_sin_etiqueta, total_fallo_llenado = 0, 0, 0
+hist_ok, hist_se, hist_ll = [], [], []
+
+while cap.isOpened():
+    inicio_frame = time.time()
+    ret, frame = cap.read()
+    if not ret: break
+
+    # REINICIO DE LISTAS (CRÍTICO: Sin esto el conteo falla)
+    botellas = []
+    etiquetas = []
+
+    # Inferencia con tracking
+    resultados = modelo.track(frame, conf=confianza_minima, persist=True, verbose=False)
+    
+    # Extraer detecciones
+    if resultados[0].boxes is not None:
+        for box in resultados[0].boxes:
+            cls_id = int(box.cls[0])
+            coords = box.xyxy[0].tolist()
+            if cls_id == 0:
+                botellas.append(coords)
+            elif cls_id == 1:
+                etiquetas.append(coords)
+
+    ok_frame, se_frame, ll_frame = 0, 0, 0
+
+    for b in botellas:
+        bx1, by1, bx2, by2 = b
+        tiene_etiqueta = False
+        
+        # Lógica de intersección (Centro de etiqueta dentro de botella)
+        for e in etiquetas:
+            ex1, ey1, ex2, ey2 = e
+            centro_x = (ex1 + ex2) / 2
+            centro_y = (ey1 + ey2) / 2
+            if bx1 < centro_x < bx2 and by1 < centro_y < by2:
+                tiene_etiqueta = True
+                break
+
+        if not tiene_etiqueta:
+            se_frame += 1; total_sin_etiqueta += 1
+            datos_auditoria.append({'Evento': 'Fallo Etiqueta', 'Timestamp': time.time()})
+            continue 
+
+        # Análisis de Llenado (ROI en el cuello)
+        alto = by2 - by1
+        # El ROI se ajusta al 15%-35% del alto de la botella detectada
+        y_inicio, y_fin = int(by1 + alto * 0.15), int(by1 + alto * 0.35)
+        zona = frame[y_inicio:y_fin, int(bx1):int(bx2)]
+        
+        if zona.size > 0:
+            # Conversión a gris y desenfoque para evitar falsos positivos por reflejos
+            zona_gris = cv2.cvtColor(zona, cv2.COLOR_BGR2GRAY)
+            zona_suave = cv2.GaussianBlur(zona_gris, (5, 5), 0)
+            
+            if np.mean(zona_suave) > umbral_transparencia:
+                ll_frame += 1; total_fallo_llenado += 1
+                datos_auditoria.append({'Evento': 'Fallo Llenado', 'Timestamp': time.time()})
+            else:
+                ok_frame += 1; total_ok += 1
+        else:
+            ok_frame += 1; total_ok += 1
+
+    fin_frame = time.time()
+    fps_historico.append(1 / (fin_frame - inicio_frame))
+    hist_ok.append(ok_frame); hist_se.append(se_frame); hist_ll.append(ll_frame)
+
+cap.release()
+print(f"✅ Proceso terminado. FPS Promedio: {np.mean(fps_historico):.2f}")
