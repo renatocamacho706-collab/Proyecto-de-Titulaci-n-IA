@@ -2,8 +2,7 @@
 
 ## Evolución y Métricas del Modelo
 | Progreso de Precisión (7 Ensayos) | Comparativa Inicial vs Final |
-|---|---|
-| ![Evolución](resultados/Precisión%20vs%20reducción%20de%20errores%20ensayo%207.png) | ![Comparativa](resultados/comparación%20inicial%20con%20la%20final%20del%20modelo%20metrica_entrenamiento_v7.png) |
+| ![Evolución](https://github.com/renatocamacho706-collab/Proyecto-de-Titulaci-n-IA/blob/main/resultados/Precisi%C3%B3n%20vs%20reducci%C3%B3n%20de%20errores%20ensayo%207?raw=true) | ![Comparativa](resultados/comparación%20inicial%20con%20la%20final%20del%20modelo%20metrica_entrenamiento_v7.png) |
 
 ---
 
