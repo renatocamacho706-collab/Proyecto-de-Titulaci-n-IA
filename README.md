@@ -1,4 +1,4 @@
-# Sistema de Auditoría de Calidad Industrial con IA - ILEPSA 🏭🤖
+# Sistema de Auditoría de Calidad Industrial con IA - ILEPSA
 
 Este repositorio contiene el desarrollo de un sistema de visión artificial híbrido diseñado para optimizar el control de calidad en la producción de envases.
 
